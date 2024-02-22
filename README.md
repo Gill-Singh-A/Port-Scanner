@@ -1,5 +1,5 @@
 # Port Scanner
-Scans for Open ports in the given IPv4 Targets using UDP Protocol
+Scans for Open ports in the given IPv4 Targets using TCP Protocol
 
 ## Requirements
 Language Used = Python3
