@@ -4,7 +4,7 @@ import socket, os
 from datetime import date
 from optparse import OptionParser
 from pickle import load, dump
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, cpu_count, Lock
 from colorama import Fore, Back, Style
 from time import strftime, localtime, time
 
@@ -27,49 +27,81 @@ def get_arguments(*args):
 		parser.add_option(arg[0], arg[1], dest=arg[2], help=arg[3])
 	return parser.parse_args()[0]
 
+lock = Lock()
+
 class PortScanner():
-	def __init__(self, host, ports = [], timeout=-1):
-		self.host = host
+	def __init__(self, hosts, ports = [], timeout=-1):
+		self.hosts = hosts
 		self.timeout = timeout
 		if ports == []:
 			self.ports = list(range(0, 65537))
 		else:
 			self.ports = ports
-		self.open_ports = []
-	def checkPort(self, port):
+		self.host_down = []
+		self.open_ports = {host:[] for host in self.hosts}
+	def checkHost(self, host):
+		return os.system(f"ping -c 1 {host} >/dev/null") == 0
+	def checkHosts(self, hosts):
+		up_hosts, down_hosts = [], []
+		for host in hosts:
+			if self.checkHost(host):
+				up_hosts.append(host)
+			else:
+				with lock:
+					display('*', f"Host {Back.MAGENTA}{host}{Back.RESET} Unreachable")
+		return up_hosts, down_hosts
+	def checkPort(self, host, port):
 		try:
 			self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			if self.timeout != -1:
 				socket.setdefaulttimeout(self.timeout)
-			result = self.socket.connect_ex((self.host, port))
+			result = self.socket.connect_ex((host, port))
 		except:
 			return False
 		else:
 			if result == 0:
 				return True
 			self.socket.close()
-	def scanner(self, ports):
-		open_ports = []
-		for port in ports:
-			status = self.checkPort(port)
-			if status:
-				open_ports.append(port)
+	def scanner(self, hosts, ports):
+		open_ports = {host:[] for host in hosts}
+		for host in hosts:
+			for port in ports:
+				status = self.checkPort(host, port)
+				if status:
+					with lock:
+						display(':', f"Open => {Back.MAGENTA}{host}:{port}{Back.RESET}")
+					open_ports[host].append(port)
 		return open_ports
 	def scan(self):
 		t1 = time()
 		thread_count = cpu_count()
+		display(':', f"Detecting Alive Hosts with {Back.MAGENTA}{thread_count} Threads{Back.RESET}")
 		pool = Pool(thread_count)
-		port_count = len(self.ports)
-		port_divisions = [self.ports[group*port_count//thread_count: (group+1)*port_count//thread_count] for group in range(thread_count)]
+		host_count = len(self.hosts)
+		host_divisions = [self.hosts[group*host_count//thread_count: (group+1)*host_count//thread_count] for group in range(thread_count)]
 		threads = []
-		for port_division in port_divisions:
-			threads.append(pool.apply_async(self.scanner, (port_division, )))
+		for host_division in host_divisions:
+			threads.append(pool.apply_async(self.checkHosts, (host_division, )))
 		for thread in threads:
-			self.open_ports.extend(thread.get())
+			up_hosts, down_hosts = thread.get()
+			for host in down_hosts:
+				self.open_ports.pop(host)
+		pool.close()
+		pool.join()
+		display('+', f"Total Alive Hosts = {Back.MAGENTA}{len(self.open_ports)}{Back.RESET}")
+		display(':', f"Starting Port Scanning {Back.MAGENTA}{thread_count} Threads{Back.RESET}")
+		pool = Pool(thread_count)
+		threads = []
+		for host_division in host_divisions:
+			threads.append(pool.apply_async(self.scanner, (host_division, self.ports)))
+		for thread in threads:
+			current_thread_open_ports = thread.get()
+			for host, ports in current_thread_open_ports.items():
+				self.open_ports[host].extend(ports)
 		pool.close()
 		pool.join()
 		t2 = time()
-		return self.open_ports, [port for port in self.ports if port not in self.open_ports], t2-t1
+		return self.open_ports, self.host_down, t2-t1
 
 if __name__ == "__main__":
 	data = get_arguments(('-t', "--target", "target", "IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')"),
@@ -131,29 +163,14 @@ if __name__ == "__main__":
 		data.timeout = -1
 	else:
 		data.timeout = int(data.timeout)
+	if not data.write:
+		data.write = f"{date.today()} {strftime('%H_%M_%S', localtime())}"
 	result = {}
-	for target in data.target:
-		host_up = os.system(f"ping -c 1 {target} >/dev/null") == 0
-		if not host_up:
-			display('*', f"Target {Back.MAGENTA}{target}{Back.RESET} Unreachable")
-			continue
-		scanner = PortScanner(target, ports=ports, timeout=data.timeout)
-		display(':', f"Starting Port Scan on {Back.MAGENTA}{target}{Back.RESET} for {Back.MAGENTA}{len(ports)}{Back.RESET} ports with {Back.MAGENTA}{cpu_count()}{Back.RESET} threads")
-		open_ports, closed_ports, time_taken = scanner.scan()
-		result[target] = open_ports
-		display('+', f"Port Scan Finished!\n")
-		display(':', f"Scanned Ports      = {Back.MAGENTA}{len(ports)}{Back.RESET}")
-		display(':', f"Open Ports         = {Back.MAGENTA}{len(open_ports)}{Back.RESET}")
-		display(':', f"Closed Ports       = {Back.MAGENTA}{len(closed_ports)}{Back.RESET}")
-		display(':', f"Time Taken to Scan = {Back.MAGENTA}{time_taken}{Back.RESET}\n")
-		print(f"{Fore.GREEN}Open Ports{Fore.RESET}\n{'-'*10}{Fore.CYAN}")
-		print('\n'.join([str(port) for port in open_ports]))
-		print(Fore.RESET)
-		print('\n')
+	scanner = PortScanner(data.target, ports=ports, timeout=data.timeout)
+	display(':', f"Starting Port Scan on {Back.MAGENTA}{len(data.target)} Targets{Back.RESET} for {Back.MAGENTA}{len(ports)}{Back.RESET} ports with {Back.MAGENTA}{cpu_count()} Threads{Back.RESET} ")
+	result, host_down, time_taken = scanner.scan()
+	display('+', f"Port Scan Finished!\n")
+	display(':', f"Time Taken for Full Scan = {Back.MAGENTA}{time_taken}{Back.RESET}\n")
 	if data.write:
-		if data.write == '':
-			with open(get_time(), 'wb') as file:
-				dump(result, file)
-		else:
-			with open(data.write, 'wb') as file:
-				dump(result, file)
+		with open(data.write, 'wb') as file:
+			dump({"port_scan": result, "host_down": host_down, "time_taken": time_taken}, file)
