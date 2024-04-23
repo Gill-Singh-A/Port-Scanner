@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
 import socket
-from queue import Queue
 from datetime import date
 from optparse import OptionParser
 from pickle import load, dump
-from threading import Thread, Lock
+from multiprocessing import Pool, cpu_count
 from colorama import Fore, Back, Style
 from time import strftime, localtime, time
 
@@ -29,11 +28,8 @@ def get_arguments(*args):
 	return parser.parse_args()[0]
 
 class PortScanner():
-	def __init__(self, host, ports = [], threads=100, timeout=-1):
+	def __init__(self, host, ports = [], timeout=-1):
 		self.host = host
-		self.thread_number = threads
-		self.queue = Queue()
-		self.append_lock = Lock()
 		self.timeout = timeout
 		if ports == []:
 			self.ports = list(range(0, 65537))
@@ -52,22 +48,26 @@ class PortScanner():
 			if result == 0:
 				return True
 			self.socket.close()
-	def scanner(self):
-		while True:
-			port = self.queue.get()
+	def scanner(self, ports):
+		open_ports = []
+		for port in ports:
 			status = self.checkPort(port)
 			if status:
-				with self.append_lock:
-					self.open_ports.append(port)
-			self.queue.task_done()
+				open_ports.append(port)
+		return open_ports
 	def scan(self):
 		t1 = time()
-		for _ in range(self.thread_number):
-			thread = Thread(target=self.scanner, daemon=True)
-			thread.start()
-		for port in self.ports:
-			self.queue.put(port)
-		self.queue.join()
+		thread_count = cpu_count()
+		pool = Pool(thread_count)
+		port_count = len(self.ports)
+		port_divisions = [self.ports[group*port_count//thread_count: (group+1)*port_count//thread_count] for group in range(thread_count)]
+		threads = []
+		for port_division in port_divisions:
+			threads.append(pool.apply_async(self.scanner, (port_division, )))
+		for thread in threads:
+			self.open_ports.extend(thread.get())
+		pool.close()
+		pool.join()
 		t2 = time()
 		return self.open_ports, [port for port in self.ports if port not in self.open_ports], t2-t1
 
@@ -75,7 +75,6 @@ if __name__ == "__main__":
 	data = get_arguments(('-t', "--target", "target", "IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')"),
 		      			 ('-p', "--port", "port", "Port/Ports (seperated by ',') to scan"),
 					     ('-P', "--port-range", "port_range", "Range of Ports to scan (seperated by '-', start-stop)"),
-		      			 ('-T', "--threads", "threads", "Number of Port Scanning Threads  (default = 100)"),
 						 ('-d', "--timeout", "timeout", "Timeout for Single Port Scan"),
 						 ('-l', "--load", "load", "Load Targets from a file"),
 						 ('-r', '--read', "read", "File to read a Previous Scan Result"),
@@ -128,18 +127,14 @@ if __name__ == "__main__":
 	else:
 		ports = data.port.split(',')
 		ports = [int(port.strip()) for port in ports]
-	if not data.threads:
-		data.threads = 100
-	else:
-		data.threads = int(data.threads)
 	if not data.timeout:
 		data.timeout = -1
 	else:
 		data.timeout = int(data.timeout)
 	result = {}
 	for target in data.target:
-		scanner = PortScanner(target, ports=ports, threads=data.threads, timeout=data.timeout)
-		display(':', f"Starting Port Scan on {Back.MAGENTA}{target}{Back.RESET} for {Back.MAGENTA}{len(ports)}{Back.RESET} ports with {Back.MAGENTA}{data.threads}{Back.RESET} threads")
+		scanner = PortScanner(target, ports=ports, timeout=data.timeout)
+		display(':', f"Starting Port Scan on {Back.MAGENTA}{target}{Back.RESET} for {Back.MAGENTA}{len(ports)}{Back.RESET} ports with {Back.MAGENTA}{cpu_count()}{Back.RESET} threads")
 		open_ports, closed_ports, time_taken = scanner.scan()
 		result[target] = open_ports
 		display('+', f"Port Scan Finished!\n")
