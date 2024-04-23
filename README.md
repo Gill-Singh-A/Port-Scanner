@@ -5,13 +5,17 @@ Scans for Open ports in the given IPv4 Targets using TCP Protocol
 Language Used = Python3
 Modules/Packages used:
 * socket
-* queue
+* datetime
 * optparse
 * pickle
-* threading
+* multiprocessing
 * colorama
 * time
-
+<!-- -->
+Install the dependencies:
+```bash
+pip install -r requirements.txt
+```
 ## Input
 * '-t', "--target": IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')
 * '-p', "--port": Port/Ports (seperated by ',') to scan
