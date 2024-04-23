@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import socket
+import socket, os
 from datetime import date
 from optparse import OptionParser
 from pickle import load, dump
@@ -133,6 +133,10 @@ if __name__ == "__main__":
 		data.timeout = int(data.timeout)
 	result = {}
 	for target in data.target:
+		host_up = os.system(f"ping -c 1 {target} >/dev/null") == 0
+		if not host_up:
+			display('*', f"Target {Back.MAGENTA}{target}{Back.RESET} Unreachable")
+			continue
 		scanner = PortScanner(target, ports=ports, timeout=data.timeout)
 		display(':', f"Starting Port Scan on {Back.MAGENTA}{target}{Back.RESET} for {Back.MAGENTA}{len(ports)}{Back.RESET} ports with {Back.MAGENTA}{cpu_count()}{Back.RESET} threads")
 		open_ports, closed_ports, time_taken = scanner.scan()
