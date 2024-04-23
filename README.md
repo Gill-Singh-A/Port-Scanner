@@ -5,6 +5,7 @@ Scans for Open ports in the given IPv4 Targets using TCP Protocol
 Language Used = Python3
 Modules/Packages used:
 * socket
+* os
 * datetime
 * optparse
 * pickle
