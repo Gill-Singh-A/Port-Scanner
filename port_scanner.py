@@ -49,6 +49,7 @@ class PortScanner():
 			else:
 				with lock:
 					display('*', f"Host {Back.MAGENTA}{host}{Back.RESET} Unreachable")
+				down_hosts.append(host)
 		return up_hosts, down_hosts
 	def checkPort(self, host, port):
 		try:
@@ -86,11 +87,14 @@ class PortScanner():
 			up_hosts, down_hosts = thread.get()
 			for host in down_hosts:
 				self.open_ports.pop(host)
+				self.hosts.remove(host)
 		pool.close()
 		pool.join()
 		display('+', f"Total Alive Hosts = {Back.MAGENTA}{len(self.open_ports)}{Back.RESET}")
 		display(':', f"Starting Port Scanning {Back.MAGENTA}{thread_count} Threads{Back.RESET}")
 		pool = Pool(thread_count)
+		host_count = len(self.hosts)
+		host_divisions = [self.hosts[group*host_count//thread_count: (group+1)*host_count//thread_count] for group in range(thread_count)]
 		threads = []
 		for host_division in host_divisions:
 			threads.append(pool.apply_async(self.scanner, (host_division, self.ports)))
