@@ -27,6 +27,7 @@ def get_arguments(*args):
 		parser.add_option(arg[0], arg[1], dest=arg[2], help=arg[3])
 	return parser.parse_args()[0]
 
+ping_hosts = True
 lock = Lock()
 
 class PortScanner():
@@ -77,20 +78,21 @@ class PortScanner():
 		t1 = time()
 		thread_count = cpu_count()
 		display(':', f"Detecting Alive Hosts with {Back.MAGENTA}{thread_count} Threads{Back.RESET}")
-		pool = Pool(thread_count)
-		host_count = len(self.hosts)
-		host_divisions = [self.hosts[group*host_count//thread_count: (group+1)*host_count//thread_count] for group in range(thread_count)]
-		threads = []
-		for host_division in host_divisions:
-			threads.append(pool.apply_async(self.checkHosts, (host_division, )))
-		for thread in threads:
-			up_hosts, down_hosts = thread.get()
-			for host in down_hosts:
-				self.open_ports.pop(host)
-				self.hosts.remove(host)
-		pool.close()
-		pool.join()
-		display('+', f"Total Alive Hosts = {Back.MAGENTA}{len(self.open_ports)}{Back.RESET}")
+		if ping_hosts:
+			pool = Pool(thread_count)
+			host_count = len(self.hosts)
+			host_divisions = [self.hosts[group*host_count//thread_count: (group+1)*host_count//thread_count] for group in range(thread_count)]
+			threads = []
+			for host_division in host_divisions:
+				threads.append(pool.apply_async(self.checkHosts, (host_division, )))
+			for thread in threads:
+				up_hosts, down_hosts = thread.get()
+				for host in down_hosts:
+					self.open_ports.pop(host)
+					self.hosts.remove(host)
+			pool.close()
+			pool.join()
+			display('+', f"Total Alive Hosts = {Back.MAGENTA}{len(self.open_ports)}{Back.RESET}")
 		display(':', f"Starting Port Scanning {Back.MAGENTA}{thread_count} Threads{Back.RESET}")
 		pool = Pool(thread_count)
 		host_count = len(self.hosts)
@@ -110,7 +112,8 @@ class PortScanner():
 if __name__ == "__main__":
 	data = get_arguments(('-t', "--target", "target", "IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')"),
 		      			 ('-p', "--port", "port", "Port/Ports (seperated by ',') to scan"),
-					     ('-P', "--port-range", "port_range", "Range of Ports to scan (seperated by '-', start-stop)"),
+					     ('-s', "--port-range", "port_range", "Range of Ports to scan (seperated by '-', start-stop)"),
+						 ('-P', "--ping", "ping", f"Ping to check Alive Hosts (True/False, Default={ping_hosts})"),
 						 ('-d', "--timeout", "timeout", "Timeout for Single Port Scan"),
 						 ('-l', "--load", "load", "Load Targets from a file"),
 						 ('-r', '--read', "read", "File to read a Previous Scan Result"),
@@ -163,6 +166,8 @@ if __name__ == "__main__":
 	else:
 		ports = data.port.split(',')
 		ports = [int(port.strip()) for port in ports]
+	if data.ping == "False":
+		ping = False
 	if not data.timeout:
 		data.timeout = -1
 	else:
