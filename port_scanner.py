@@ -167,7 +167,7 @@ if __name__ == "__main__":
 		ports = data.port.split(',')
 		ports = [int(port.strip()) for port in ports]
 	if data.ping == "False":
-		ping = False
+		ping_hosts = False
 	if not data.timeout:
 		data.timeout = -1
 	else:
