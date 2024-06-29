@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+from os import geteuid
 from datetime import date
 from optparse import OptionParser
 from colorama import Fore, Back, Style
@@ -21,6 +22,9 @@ def get_arguments(*args):
     for arg in args:
         parser.add_option(arg[0], arg[1], dest=arg[2], help=arg[3])
     return parser.parse_args()[0]
+
+def check_root():
+    return geteuid() == 0
 
 if __name__ == "__main__":
     pass
