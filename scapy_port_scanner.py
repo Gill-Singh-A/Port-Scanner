@@ -30,6 +30,7 @@ def get_arguments(*args):
 self_ip = None
 default_wait_time = 100
 targets = []
+alive_hosts = []
 thread_count = cpu_count()
 lock = Lock()
 result = {}
@@ -58,7 +59,8 @@ def processPacket(packet):
             if packet[IP].src in targets and sorted(list(str(packet[TCP].flags))) == ['A', 'S']:
                 display(':', f"Open => {Back.MAGENTA}{packet[IP].src}:{packet[TCP].sport}{Back.RESET}")
                 result[packet[IP].src].append(packet[TCP].sport)
-                
+            elif packet[IP].src in targets:
+                alive_hosts.append(packet[IP].src)
 
 if __name__ == "__main__":
     arguments = get_arguments(('-t', "--target", "target", "IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')"),
@@ -167,4 +169,4 @@ if __name__ == "__main__":
     if arguments.write:
         with open(arguments.write, 'wb') as file:
             with lock:
-                pickle.dump(result, file)
+                pickle.dump({"result": result, "alive_hosts": alive_hosts}, file)
