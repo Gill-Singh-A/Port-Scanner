@@ -84,7 +84,7 @@ if __name__ == "__main__":
         except:
             display('-', "Error in Reading the File")
             exit(0)
-        for target, open_ports in result.items():
+        for target, open_ports in result["result"].items():
             display(':', f"Target     = {target}")
             display(':', f"Open Ports = {len(open_ports)}")
             print(f"{Fore.GREEN}Open Ports{Fore.RESET}\n{'-'*10}{Fore.CYAN}")
