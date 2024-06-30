@@ -161,3 +161,7 @@ if __name__ == "__main__":
         display(':', "Exiting")
     except Exception as error:
         display('-', f"Error Occured => {Back.YELLOW}{error}{Back.RESET}")
+    if arguments.write:
+        with open(arguments.write, 'wb') as file:
+            with lock:
+                pickle.dump(result, file)
