@@ -5,6 +5,7 @@ from os import geteuid
 from datetime import date
 from optparse import OptionParser
 from pickle import load, dump
+from multiprocessing import Pool, Lock, cpu_count
 from colorama import Fore, Back, Style
 from time import strftime, localtime
 
@@ -27,6 +28,9 @@ def get_arguments(*args):
 
 self_ip = None
 default_wait_time = 100
+targets = []
+thread_count = cpu_count()
+lock = Lock()
 
 def check_root():
     return geteuid() == 0
@@ -42,6 +46,10 @@ def sendPacket(ip, port, flags='S', count=1, interface=None, interval=0.1):
         sendp(packet, count=count, inter=interval, verbose=False)
     else:
         sendp(packet, iface=interface, count=count, inter=interval, verbose=False)
+def sendPacketHandler(ips, ports, interface):
+    for target in ips:
+        for port in ports:
+            sendPacket(target, port, interface=interface)
 
 if __name__ == "__main__":
     arguments = get_arguments(('-t', "--target", "target", "IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')"),
@@ -118,3 +126,15 @@ if __name__ == "__main__":
         display(':', f"Got IP {Back.MAGENTA}{self_ip}{Back.RESET} for Interface {Back.MAGENTA}{arguments.interface}{Back.RESET}")
     if not arguments.write:
         arguments.write = f"{date.today()} {strftime('%H_%M_%S', localtime())}"
+    targets.extend(arguments.target)
+    total_targets = len(targets)
+    display(':', f"Sending {Back.MAGENTA}SYN Packets{Back.RESET} to {Back.MAGENTA}{total_targets} Targets{Back.RESET} for {Back.MAGENTA}{len(ports)} Ports{Back.RESET}")
+    pool = Pool(thread_count)
+    target_divisions = [targets[group*total_targets//thread_count: (group+1)*total_targets//thread_count] for group in range(thread_count)]
+    threads = []
+    for target_division in target_divisions:
+        threads.append(pool.apply_async(sendPacketHandler, args=(target_division, ports, arguments.interface, )))
+    for thread in threads:
+        thread.get()
+    pool.close()
+    pool.join()
