@@ -5,6 +5,7 @@ from os import geteuid
 from datetime import date
 from optparse import OptionParser
 from pickle import load, dump
+from threading import Thread
 from multiprocessing import Pool, Lock, cpu_count
 from colorama import Fore, Back, Style
 from time import strftime, localtime
@@ -50,6 +51,8 @@ def sendPacketHandler(ips, ports, interface):
     for target in ips:
         for port in ports:
             sendPacket(target, port, interface=interface)
+def processPacket(packet):
+    pass
 
 if __name__ == "__main__":
     arguments = get_arguments(('-t', "--target", "target", "IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')"),
@@ -117,13 +120,19 @@ if __name__ == "__main__":
         arguments.timeout = float(arguments.timeout)
     if not arguments.interface:
         arguments.interface = None
+        display(':', f"Starting Sniffing")
+        Thread(target=sniff, kwargs={"prn": processPacket}, daemon=True).start()
     elif arguments.interface not in get_if_list():
         display('*', f"Interface {Back.MAGENTA}{arguments.interface}{Back.RESET} not present")
         display(':', f"Available Interfaces : {Back.MAGENTA}{get_if_list()}{Back.RESET}")
         display('+', f"Using Default Interface")
+        display(':', f"Starting Sniffing")
+        Thread(target=sniff, kwargs={"prn": processPacket}, daemon=True).start()
     else:
         self_ip = get_if_addr(arguments.interface)
         display(':', f"Got IP {Back.MAGENTA}{self_ip}{Back.RESET} for Interface {Back.MAGENTA}{arguments.interface}{Back.RESET}")
+        display(':', f"Starting Sniffing on Interface {Back.MAGENTA}{arguments.interface}{Back.RESET}")
+        Thread(target=sniff, kwargs={"prn": processPacket, "iface": arguments.interface}, daemon=True).start()
     if not arguments.write:
         arguments.write = f"{date.today()} {strftime('%H_%M_%S', localtime())}"
     targets.extend(arguments.target)
