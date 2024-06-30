@@ -144,7 +144,7 @@ if __name__ == "__main__":
     targets.extend(arguments.target)
     result = {target:[] for target in targets}
     total_targets = len(targets)
-    display('+', f"Sending {Back.MAGENTA}SYN Packets{Back.RESET} to {Back.MAGENTA}{total_targets} Targets{Back.RESET} for {Back.MAGENTA}{len(ports)} Ports{Back.RESET}")
+    display('+', f"Sending {Back.MAGENTA}SYN Packets{Back.RESET} to {Back.MAGENTA}{total_targets} Targets{Back.RESET} for {Back.MAGENTA}{len(ports)} Ports{Back.RESET} with {Back.MAGENTA}{thread_count}{Back.RESET} Threads")
     pool = Pool(thread_count)
     target_divisions = [targets[group*total_targets//thread_count: (group+1)*total_targets//thread_count] for group in range(thread_count)]
     threads = []
@@ -154,6 +154,9 @@ if __name__ == "__main__":
         thread.get()
     pool.close()
     pool.join()
+    with lock:
+        display('*', f"Done Sending {Back.MAGENTA}SYN Packets{Back.RESET} to {Back.MAGENTA}{total_targets} Targets{Back.RESET} for {Back.MAGENTA}{len(ports)} Ports{Back.RESET} with {Back.MAGENTA}{thread_count}{Back.RESET} Threads")
+        display(':', f"Now waiting for {Back.MAGENTA}{arguments.timeout} seconds{Back.RESET}")
     try:
         sleep(arguments.timeout)
     except KeyboardInterrupt:
