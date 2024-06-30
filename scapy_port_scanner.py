@@ -8,7 +8,7 @@ from pickle import load, dump
 from threading import Thread
 from multiprocessing import Pool, Lock, cpu_count
 from colorama import Fore, Back, Style
-from time import strftime, localtime
+from time import strftime, localtime, sleep
 
 status_color = {
     '+': Fore.GREEN,
@@ -154,3 +154,10 @@ if __name__ == "__main__":
         thread.get()
     pool.close()
     pool.join()
+    try:
+        sleep(arguments.timeout)
+    except KeyboardInterrupt:
+        display('*', f"Keyboard Interrupt Detected!", start='\n')
+        display(':', "Exiting")
+    except Exception as error:
+        display('-', f"Error Occured => {Back.YELLOW}{error}{Back.RESET}")
