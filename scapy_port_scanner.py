@@ -169,4 +169,4 @@ if __name__ == "__main__":
     if arguments.write:
         with open(arguments.write, 'wb') as file:
             with lock:
-                pickle.dump({"result": result, "alive_hosts": alive_hosts}, file)
+                dump({"result": result, "alive_hosts": alive_hosts}, file)
