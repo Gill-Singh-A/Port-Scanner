@@ -43,9 +43,9 @@ def sendPacket(ip, port, flags='S', count=1, interface=None, interval=0.1):
     tcp_layer = TCP(dport=port, flags=flags)
     packet = ip_layer / tcp_layer
     if interface == None:
-        sendp(packet, count=count, inter=interval, verbose=False)
+        print(send(packet, count=count, inter=interval, verbose=False))
     else:
-        sendp(packet, iface=interface, count=count, inter=interval, verbose=False)
+        print(send(packet, iface=interface, count=count, inter=interval, verbose=False))
 def sendPacketHandler(ips, ports, interface):
     for target in ips:
         for port in ports:
