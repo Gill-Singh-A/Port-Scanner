@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+from scapy.all import *
 from os import geteuid
 from datetime import date
 from optparse import OptionParser
@@ -24,19 +25,39 @@ def get_arguments(*args):
         parser.add_option(arg[0], arg[1], dest=arg[2], help=arg[3])
     return parser.parse_args()[0]
 
+self_ip = None
+default_wait_time = 100
+
 def check_root():
     return geteuid() == 0
 
+def sendPacket(ip, port, flags='S', count=1, interface=None, interval=0.1):
+    if self_ip == None:
+        ip_layer = IP(dst=ip)
+    else:
+        ip_layer = IP(src=self_ip, dst=ip)
+    tcp_layer = TCP(dport=port, flags=flags)
+    packet = ip_layer / tcp_layer
+    if interface == None:
+        sendp(packet, count=count, inter=interval, verbose=False)
+    else:
+        sendp(packet, iface=interface, count=count, inter=interval, verbose=False)
+
 if __name__ == "__main__":
-    data = get_arguments(('-t', "--target", "target", "IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')"),
-                         ('-p', "--port", "port", "Port/Ports (seperated by ',') to scan"),
-                         ('-s', "--port-range", "port_range", "Range of Ports to scan (seperated by '-', start-stop)"),
-                         ('-l', "--load", "load", "Load Targets from a file"),
-                         ('-r', '--read', "read", "File to read a Previous Scan Result"),
-                         ('-w', "--write", "write", "Dump the output to a File (Optional)"))
-    if data.read:
+    arguments = get_arguments(('-t', "--target", "target", "IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')"),
+                              ('-i', "--interface", "interface", "Interface to use"),
+                              ('-p', "--port", "port", "Port/Ports (seperated by ',') to scan"),
+                              ('-s', "--port-range", "port_range", "Range of Ports to scan (seperated by '-', start-stop)"),
+                              ('-l', "--load", "load", "Load Targets from a file"),
+                              ('-T', "--timeout", "timeout", f"Timeout for Listening for Packets (Default={default_wait_time} seconds)"),
+                              ('-r', '--read', "read", "File to read a Previous Scan Result"),
+                              ('-w', "--write", "write", "Dump the output to a File (Optional)"))
+    if not check_root():
+        display('-', f"This Program requires {Back.MAGENTA}root{Back.RESET} Privileges")
+        exit(0)
+    if arguments.read:
         try:
-            with open(data.read, 'rb') as file:
+            with open(arguments.read, 'rb') as file:
                 result = load(file)
         except FileNotFoundError:
             display('-', "File not Found!")
@@ -52,15 +73,15 @@ if __name__ == "__main__":
             print('\n')
         print(Fore.RESET)
         exit(0)
-    if not data.target:
-        if not data.load:
+    if not arguments.target:
+        if not arguments.load:
             display('-', f"Please specifiy a Target")
             exit(0)
         else:
             try:
-                with open(data.load, 'r') as file:
+                with open(arguments.load, 'r') as file:
                     file_data = file.read().split('\n')
-                data.target = [target for target in file_data if target != '']
+                arguments.target = [target for target in file_data if target != '']
             except FileNotFoundError:
                 display('-', "File not Found!")
                 exit(0)
@@ -68,23 +89,32 @@ if __name__ == "__main__":
                 display('-', "Error in Reading the File")
                 exit(0)
     else:
-        data.target = data.target.split(',')
-    if not data.port:
-        if not data.port_range:
+        arguments.target = arguments.target.split(',')
+    if not arguments.port:
+        if not arguments.port_range:
             ports  = list(range(0, 65537))
         else:
-            start_port, stop_port = data.port_range.split('-')
+            start_port, stop_port = arguments.port_range.split('-')
             start_port = int(start_port.strip())
             stop_port = int(stop_port.strip())
             ports = list(range(start_port, stop_port+1))
-    elif ',' not in data.port:
-        ports = [int(data.port)]
+    elif ',' not in arguments.port:
+        ports = [int(arguments.port)]
     else:
-        ports = data.port.split(',')
+        ports = arguments.port.split(',')
         ports = [int(port.strip()) for port in ports]
-    if not data.timeout:
-        data.timeout = -1
+    if not arguments.timeout:
+        arguments.timeout = default_wait_time
     else:
-        data.timeout = int(data.timeout)
-    if not data.write:
-        data.write = f"{date.today()} {strftime('%H_%M_%S', localtime())}"
+        arguments.timeout = float(arguments.timeout)
+    if not arguments.interface:
+        arguments.interface = None
+    elif arguments.interface not in get_if_list():
+        display('*', f"Interface {Back.MAGENTA}{arguments.interface}{Back.RESET} not present")
+        display(':', f"Available Interfaces : {Back.MAGENTA}{get_if_list()}{Back.RESET}")
+        display('+', f"Using Default Interface")
+    else:
+        self_ip = get_if_addr(arguments.interface)
+        display(':', f"Got IP {Back.MAGENTA}{self_ip}{Back.RESET} for Interface {Back.MAGENTA}{arguments.interface}{Back.RESET}")
+    if not arguments.write:
+        arguments.write = f"{date.today()} {strftime('%H_%M_%S', localtime())}"
