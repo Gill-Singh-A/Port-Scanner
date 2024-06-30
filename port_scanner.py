@@ -111,7 +111,7 @@ class PortScanner():
 
 if __name__ == "__main__":
     data = get_arguments(('-t', "--target", "target", "IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')"),
-                           ('-p', "--port", "port", "Port/Ports (seperated by ',') to scan"),
+                         ('-p', "--port", "port", "Port/Ports (seperated by ',') to scan"),
                          ('-s', "--port-range", "port_range", "Range of Ports to scan (seperated by '-', start-stop)"),
                          ('-P', "--ping", "ping", f"Ping to check Alive Hosts (True/False, Default={ping_hosts})"),
                          ('-d', "--timeout", "timeout", "Timeout for Single Port Scan"),
@@ -128,7 +128,7 @@ if __name__ == "__main__":
         except:
             display('-', "Error in Reading the File")
             exit(0)
-        for target, open_ports in result.items():
+        for target, open_ports in result["result"].items():
             display(':', f"Target     = {target}")
             display(':', f"Open Ports = {len(open_ports)}")
             print(f"{Fore.GREEN}Open Ports{Fore.RESET}\n{'-'*10}{Fore.CYAN}")
