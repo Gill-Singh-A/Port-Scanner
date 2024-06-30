@@ -32,6 +32,7 @@ default_wait_time = 100
 targets = []
 thread_count = cpu_count()
 lock = Lock()
+result = {}
 
 def check_root():
     return geteuid() == 0
@@ -44,15 +45,20 @@ def sendPacket(ip, port, flags='S', count=1, interface=None, interval=0.1):
     tcp_layer = TCP(dport=port, flags=flags)
     packet = ip_layer / tcp_layer
     if interface == None:
-        print(send(packet, count=count, inter=interval, verbose=False))
+        send(packet, count=count, inter=interval, verbose=False)
     else:
-        print(send(packet, iface=interface, count=count, inter=interval, verbose=False))
+        send(packet, iface=interface, count=count, inter=interval, verbose=False)
 def sendPacketHandler(ips, ports, interface):
     for target in ips:
         for port in ports:
             sendPacket(target, port, interface=interface)
 def processPacket(packet):
-    pass
+    if packet.haslayer(IP) and packet.haslayer(TCP):
+        with lock:
+            if packet[IP].src in targets and sorted(list(str(packet[TCP].flags))) == ['A', 'S']:
+                display(':', f"Open => {Back.MAGENTA}{packet[IP].src}:{packet[TCP].sport}{Back.RESET}")
+                result[packet[IP].src].append(packet[TCP].sport)
+                
 
 if __name__ == "__main__":
     arguments = get_arguments(('-t', "--target", "target", "IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')"),
@@ -136,8 +142,9 @@ if __name__ == "__main__":
     if not arguments.write:
         arguments.write = f"{date.today()} {strftime('%H_%M_%S', localtime())}"
     targets.extend(arguments.target)
+    result = {target:[] for target in targets}
     total_targets = len(targets)
-    display(':', f"Sending {Back.MAGENTA}SYN Packets{Back.RESET} to {Back.MAGENTA}{total_targets} Targets{Back.RESET} for {Back.MAGENTA}{len(ports)} Ports{Back.RESET}")
+    display('+', f"Sending {Back.MAGENTA}SYN Packets{Back.RESET} to {Back.MAGENTA}{total_targets} Targets{Back.RESET} for {Back.MAGENTA}{len(ports)} Ports{Back.RESET}")
     pool = Pool(thread_count)
     target_divisions = [targets[group*total_targets//thread_count: (group+1)*total_targets//thread_count] for group in range(thread_count)]
     threads = []
