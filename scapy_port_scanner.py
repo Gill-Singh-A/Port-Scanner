@@ -170,7 +170,15 @@ if __name__ == "__main__":
         display(':', "Exiting")
     except Exception as error:
         display('-', f"Error Occured => {Back.YELLOW}{error}{Back.RESET}")
+    display(':', f"Filtering Obtained Results")
+    for target, open_ports in result.items():
+        required_ports = []
+        for port in open_ports:
+            if port in ports:
+                required_ports.append(port)
+        result[target] = required_ports
     if arguments.write:
+        display(':', f"Dumping Data to File {Back.MAGENTA}{arguments.write}{Back.RESET}")
         with open(arguments.write, 'wb') as file:
             with lock:
                 dump({"result": result, "alive_hosts": alive_hosts}, file)
