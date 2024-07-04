@@ -52,7 +52,11 @@ def sendPacket(ip, port, flags='S', count=1, interface=None, interval=0.1):
 def sendPacketHandler(ips, ports, interface):
     for target in ips:
         for port in ports:
-            sendPacket(target, port, interface=interface)
+            try:
+                sendPacket(target, port, interface=interface)
+            except Exception as error:
+                with lock:
+                    display('-', f"Can't send Packet to {Back.MAGENTA}{target}:{port}{Back.RESET} => {Back.YELLOW}{error}{Back.RESET}")
 def processPacket(packet):
     if packet.haslayer(IP) and packet.haslayer(TCP):
         with lock:
