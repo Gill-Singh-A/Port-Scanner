@@ -144,7 +144,7 @@ if __name__ == "__main__":
         self_ip = get_if_addr(arguments.interface)
         display(':', f"Got IP {Back.MAGENTA}{self_ip}{Back.RESET} for Interface {Back.MAGENTA}{arguments.interface}{Back.RESET}")
         display(':', f"Starting Sniffing on Interface {Back.MAGENTA}{arguments.interface}{Back.RESET}")
-        Thread(target=sniff, kwargs={"prn": processPacket, "iface": arguments.interface}, daemon=True).start()
+        Thread(target=sniff, kwargs={"prn": processPacket, "iface": arguments.interface, "store": False}, daemon=True).start()
     if not arguments.write:
         arguments.write = f"{date.today()} {strftime('%H_%M_%S', localtime())}"
     targets.extend(arguments.target)
