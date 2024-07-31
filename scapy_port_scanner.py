@@ -135,13 +135,13 @@ if __name__ == "__main__":
     if not arguments.interface:
         arguments.interface = None
         display(':', f"Starting Sniffing")
-        Thread(target=sniff, kwargs={"prn": processPacket}, daemon=True).start()
+        Thread(target=sniff, kwargs={"prn": processPacket, "store": False}, daemon=True).start()
     elif arguments.interface not in get_if_list():
         display('*', f"Interface {Back.MAGENTA}{arguments.interface}{Back.RESET} not present")
         display(':', f"Available Interfaces : {Back.MAGENTA}{get_if_list()}{Back.RESET}")
         display('+', f"Using Default Interface")
         display(':', f"Starting Sniffing")
-        Thread(target=sniff, kwargs={"prn": processPacket}, daemon=True).start()
+        Thread(target=sniff, kwargs={"prn": processPacket, "store": False}, daemon=True).start()
     else:
         self_ip = get_if_addr(arguments.interface)
         display(':', f"Got IP {Back.MAGENTA}{self_ip}{Back.RESET} for Interface {Back.MAGENTA}{arguments.interface}{Back.RESET}")
