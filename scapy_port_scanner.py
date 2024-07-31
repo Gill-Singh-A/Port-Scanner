@@ -31,6 +31,7 @@ self_ip = None
 default_wait_time = 100
 targets = []
 alive_hosts = []
+ports_to_scan = []
 thread_count = cpu_count()
 lock = Lock()
 result = {}
@@ -60,7 +61,7 @@ def sendPacketHandler(ips, ports, interface):
 def processPacket(packet):
     if packet.haslayer(IP) and packet.haslayer(TCP):
         with lock:
-            if packet[IP].src in targets and sorted(list(str(packet[TCP].flags))) == ['A', 'S']:
+            if packet[IP].src in targets and sorted(list(str(packet[TCP].flags))) == ['A', 'S'] and packet[TCP].sport in ports_to_scan:
                 display(':', f"Open => {Back.MAGENTA}{packet[IP].src}:{packet[TCP].sport}{Back.RESET}")
                 result[packet[IP].src].append(packet[TCP].sport)
             elif packet[IP].src in targets:
@@ -126,6 +127,7 @@ if __name__ == "__main__":
     else:
         ports = arguments.port.split(',')
         ports = [int(port.strip()) for port in ports]
+    ports_to_scan = ports
     if not arguments.timeout:
         arguments.timeout = default_wait_time
     else:
