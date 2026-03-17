@@ -19,7 +19,7 @@ status_color = {
     ' ': Fore.WHITE,
 }
 
-ping_hosts = True
+ping_hosts = False
 lock = Lock()
 thread_count = 100
 
@@ -34,7 +34,7 @@ def get_arguments():
     parser.add_argument('-t', "--target", type=str, help="IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')")
     parser.add_argument('-p', "--port", type=str, help="Port/Ports (seperated by ',') to scan")
     parser.add_argument('-s', "--port-range", type=str, help="Range of Ports to scan (seperated by '-', start-stop)")
-    parser.add_argument('-P', "--ping", action="store_true", help=f"Ping to check Alive Hosts (True/False, Default={ping_hosts})")
+    parser.add_argument('-P', "--ping", action="store_true", help=f"Ping to check Alive Hosts (True/False, Default={ping_hosts})", default=ping_hosts)
     parser.add_argument('-d', "--timeout", type=float, help="Timeout for Single Port Scan")
     parser.add_argument('-T', "--threads", type=int, help=f"Number of Threads for Port Scanning (Default={thread_count})", default=thread_count)
     parser.add_argument('-l', "--load", type=str, help="Load Targets from a file")
