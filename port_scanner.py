@@ -97,7 +97,7 @@ class PortScanner():
     def scan(self):
         t1 = time()
         if ping_hosts:
-            display(':', f"Detecting Alive Hosts with {Back.MAGENTA}{thread_count} Threads{Back.RESET}")
+            display(':', f"Detecting Alive Hosts with {Back.MAGENTA}{self.thread_count} Threads{Back.RESET}")
             threads = []
             queue = Queue()
             for host in self.hosts:
@@ -111,7 +111,7 @@ class PortScanner():
                 self.open_ports.pop(host)
                 self.hosts.remove(host)
             display('+', f"Total Alive Hosts = {Back.MAGENTA}{len(self.open_ports)}{Back.RESET}")
-        display(':', f"Starting Port Scanning {Back.MAGENTA}{thread_count} Threads{Back.RESET}")
+        display(':', f"Starting Port Scanning {Back.MAGENTA}{self.thread_count} Threads{Back.RESET}")
         threads = []
         queue = Queue()
         for host in self.hosts:
