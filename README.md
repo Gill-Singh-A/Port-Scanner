@@ -1,50 +1,109 @@
 # Port Scanner
+
 Scans for Open ports in the given IPv4 Targets using TCP Protocol
 
-## Requirements
-Language Used = Python3
-Modules/Packages used:
-* scapy
-* socket
-* os
-* datetime
-* optparse
-* pickle
-* multiprocessing
-* colorama
-* time
-<!-- -->
-Install the dependencies:
+# Requirements
+
+* Python 3.x
+
+### Python Libraries
+
+```
+colorama
+scapy
+```
+
+Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
+
+> Note: `scapy` scanner requires **root privileges**.
+
+# Tools Included
+
+## 1. port_scanner.py
+
+A **multi-threaded TCP connect scanner** using Python sockets.
+
+### Features
+
+* Multi-threaded scanning (fast)
+* Host discovery using ping
+* Custom port ranges / lists
+* Timeout control
+* Save & load scan results
+* Colored terminal output
+
+## 2. scapy_port_scanner.py
+
+A **SYN-based (half-open) port scanner** using Scapy.
+
+### Features
+
+* SYN packet scanning (stealthier than TCP connect)
+* Packet sniffing for responses
+* Multi-processing support
+* Interface selection
+* Root privilege enforcement
+* Save & load results
+
+# Usage
+
 ## port_scanner.py
-### Input
-* '-t', "--target": IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')
-* '-p', "--port": Port/Ports (seperated by ',') to scan
-* '-s', "--port-range": Range of Ports to scan (seperated by '-', start-stop)
-* '-d', "--timeout": Timeout for Single Port Scan
-* '-l', "--load": Load Targets from a file
-* '-r', "--read": File to read a Previous Scan Result
-* '-w', "--write": Dump the output to a File (Optional)
 
-### Output
-The Program will display the Number of : Scaned Ports, Open Port and Close Ports, List of Open Ports and time taken to scan for each target. <br />
-If the write argument is provided, it will dump the data of scan into a file named as the argument provided. <br />
-If the read argument is provided, it will read the dump file of a previous scan.
+```
+usage: port_scanner.py [-h] [-t TARGET] [-p PORT] [-s PORT_RANGE]
+                       [-P] [-d TIMEOUT] [-T THREADS]
+                       [-l LOAD] [-r READ] [-w WRITE]
+
+Port Scanner
+```
+
+### Arguments
+
+| Argument             | Description                       |
+| -------------------- | --------------------------------- |
+| `-t`, `--target`     | Target IP(s), comma-separated     |
+| `-p`, `--port`       | Port(s), comma-separated          |
+| `-s`, `--port-range` | Port range (e.g., `20-80`)        |
+| `-P`, `--ping`       | Enable ping check for alive hosts |
+| `-d`, `--timeout`    | Timeout for each port scan        |
+| `-T`, `--threads`    | Number of threads (default: 100)  |
+| `-l`, `--load`       | Load targets from file            |
+| `-r`, `--read`       | Read previous scan results        |
+| `-w`, `--write`      | Save output to file               |
+
+---
+
 ## scapy_port_scanner.py
-This program requires root privileges. It is good for scanning a large amount of Hosts. It sends SYN Packets parallely and sniffs the incomming packet using a daemonic thread.
-### Input
-* '-t', "--target": IP Address/Addresses of the Target/Targets to scan Ports (seperated by ',')
-* '-i', "--interface" : Interface to use
-* '-p', "--port": Port/Ports (seperated by ',') to scan
-* '-s', "--port-range": Range of Ports to scan (seperated by '-', start-stop)
-* '-l', "--load": Load Targets from a file
-* '-T', "--timeout": Timeout for Single Port Scan
-* '-r', "--read": File to read a Previous Scan Result
-* '-w', "--write": Dump the output to a File (Optional)
 
-### Output
-The Program will display the Number of : Scaned Ports, Open Port and Close Ports, List of Open Ports and time taken to scan for each target. <br />
-If the write argument is provided, it will dump the data of scan into a file named as the argument provided. <br />
-If the read argument is provided, it will read the dump file of a previous scan.
+```
+usage: scapy_port_scanner.py [-t TARGET] [-i INTERFACE]
+                             [-p PORT] [-s PORT_RANGE]
+                             [-l LOAD] [-T TIMEOUT]
+                             [-r READ] [-w WRITE]
+```
+
+### Arguments
+
+| Argument             | Description                     |
+| -------------------- | ------------------------------- |
+| `-t`, `--target`     | Target IP(s), comma-separated   |
+| `-i`, `--interface`  | Network interface to use        |
+| `-p`, `--port`       | Port(s), comma-separated        |
+| `-s`, `--port-range` | Port range (e.g., `20-80`)      |
+| `-l`, `--load`       | Load targets from file          |
+| `-T`, `--timeout`    | Sniffing timeout (default: 30s) |
+| `-r`, `--read`       | Read previous scan results      |
+| `-w`, `--write`      | Save output to file             |
+
+# Output
+
+* Displays:
+
+  * Alive hosts
+  * Open ports
+  * Scan duration
+* Optionally saves results using **pickle format**
