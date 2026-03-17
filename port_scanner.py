@@ -43,14 +43,12 @@ def get_arguments():
     return parser.parse_args()
 
 class PortScanner():
-    def __init__(self, hosts, ports=[], thread_count=100, timeout=None):
+    def __init__(self, hosts, ports=None, thread_count=100, ping_hosts=False, timeout=None):
         self.hosts = hosts
         self.timeout = timeout
-        if ports == []:
-            self.ports = list(range(0, 65537))
-        else:
-            self.ports = ports
+        self.ports = list(range(0, 65537)) if ports == None else ports
         self.thread_count = thread_count
+        self.ping_hosts = ping_hosts
         self.up_hosts = []
         self.down_hosts = []
         self.open_ports = {host:[] for host in self.hosts}
@@ -72,16 +70,14 @@ class PortScanner():
                     self.down_hosts.append(host)
     def checkPort(self, host, port):
         try:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             if self.timeout != None:
-                socket.setdefaulttimeout(self.timeout)
-            result = self.socket.connect_ex((host, port))
+                sock.settimeout(self.timeout)
+            result = sock.connect_ex((host, port))
+            sock.close()
+            return result == 0
         except:
             return False
-        else:
-            if result == 0:
-                return True
-            self.socket.close()
     def scanner(self, queue, ports):
         while True:
             try:
@@ -96,7 +92,7 @@ class PortScanner():
                         display(':', f"Open => {Back.MAGENTA}{host}:{port}{Back.RESET}")
     def scan(self):
         t1 = time()
-        if ping_hosts:
+        if self.ping_hosts:
             display(':', f"Detecting Alive Hosts with {Back.MAGENTA}{self.thread_count} Threads{Back.RESET}")
             threads = []
             queue = Queue()
@@ -107,9 +103,8 @@ class PortScanner():
                 threads[-1].start()
             for thread in threads:
                 thread.join()
-            for host in self.down_hosts:
-                self.open_ports.pop(host)
-                self.hosts.remove(host)
+            self.hosts = [host for host in self.hosts if host not in self.down_hosts]
+            self.open_ports = {host: [] for host in self.hosts}
             display('+', f"Total Alive Hosts = {Back.MAGENTA}{len(self.open_ports)}{Back.RESET}")
         display(':', f"Starting Port Scanning {Back.MAGENTA}{self.thread_count} Threads{Back.RESET}")
         threads = []
@@ -121,10 +116,8 @@ class PortScanner():
             threads[-1].start()
         for thread in threads:
             thread.join()
-        for thread in threads:
-            thread.get()
         t2 = time()
-        return self.open_ports, self.host_down, t2-t1
+        return self.open_ports, self.down_hosts, t2-t1
 
 if __name__ == "__main__":
     data = get_arguments()
@@ -177,7 +170,7 @@ if __name__ == "__main__":
         ports = data.port.split(',')
         ports = [int(port.strip()) for port in ports]
     result = {}
-    scanner = PortScanner(data.target, ports=ports, timeout=data.timeout)
+    scanner = PortScanner(data.target, ports=ports, thread_count=data.threads, ping_hosts=data.ping, timeout=data.timeout)
     display(':', f"Starting Port Scan on {Back.MAGENTA}{len(data.target)} Targets{Back.RESET} for {Back.MAGENTA}{len(ports)}{Back.RESET} ports with {Back.MAGENTA}{data.threads} Threads{Back.RESET} ")
     result, host_down, time_taken = scanner.scan()
     display('+', f"Port Scan Finished!\n")
