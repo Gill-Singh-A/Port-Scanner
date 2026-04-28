@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import socket
+from tqdm import tqdm
 from shlex import split
 from datetime import date
 from argparse import ArgumentParser
@@ -25,7 +26,9 @@ thread_count = 100
 
 def get_time():
     return strftime("%H:%M:%S", localtime())
-def display(status, data):
+def display(status, data, return_string=False):
+    if return_string:
+        return f"{status_color[status]}[{status}] {Fore.BLUE}[{date.today()} {get_time()}] {status_color[status]}{Style.BRIGHT}{data}{Fore.RESET}{Style.RESET_ALL}"
     print(f"{status_color[status]}[{status}] {Fore.BLUE}[{date.today()} {get_time()}] {status_color[status]}{Style.BRIGHT}{data}{Fore.RESET}{Style.RESET_ALL}")
 
 def get_arguments():
@@ -62,11 +65,11 @@ class PortScanner():
                 break
             if self.checkHost(host):
                 with lock:
-                    display('+', f"Host {Back.MAGENTA}{host}{Back.RESET} Alive")
+                    self.bar.write(display('+', f"Host {Back.MAGENTA}{host}{Back.RESET} Alive", return_string=True))
+                    self.bar.update(1)
                     self.up_hosts.append(host)
             else:
                 with lock:
-                    display('*', f"Host {Back.MAGENTA}{host}{Back.RESET} Unreachable")
                     self.down_hosts.append(host)
     def checkPort(self, host, port):
         try:
@@ -88,13 +91,14 @@ class PortScanner():
                 status = self.checkPort(host, port)
                 if status:
                     with lock:
+                        self.bar.write(display(':', f"Open => {Back.MAGENTA}{host}:{port}{Back.RESET}", return_string=True))
                         self.open_ports[host].append(port)
-                        display(':', f"Open => {Back.MAGENTA}{host}:{port}{Back.RESET}")
+                self.bar.update(1)
     def scan(self):
         t1 = time()
         if self.ping_hosts:
-            display(':', f"Detecting Alive Hosts with {Back.MAGENTA}{self.thread_count} Threads{Back.RESET}")
             threads = []
+            self.bar = tqdm(desc="Pinging Hosts", position=0, total=len(self.hosts), unit="host", dynamic_ncols=True)
             queue = Queue()
             for host in self.hosts:
                 queue.put(host)
@@ -103,12 +107,15 @@ class PortScanner():
                 threads[-1].start()
             for thread in threads:
                 thread.join()
+            self.bar.refresh()
+            self.bar.close()
             self.hosts = [host for host in self.hosts if host not in self.down_hosts]
             self.open_ports = {host: [] for host in self.hosts}
             display('+', f"Total Alive Hosts = {Back.MAGENTA}{len(self.open_ports)}{Back.RESET}")
         display(':', f"Starting Port Scanning {Back.MAGENTA}{self.thread_count} Threads{Back.RESET}")
         threads = []
         queue = Queue()
+        self.bar = tqdm(desc="Port Scanning", position=0, total=len(self.hosts) * len(self.ports), unit="port", dynamic_ncols=True)
         for host in self.hosts:
             queue.put(host)
         for thread_index in range(self.thread_count):
@@ -116,6 +123,8 @@ class PortScanner():
             threads[-1].start()
         for thread in threads:
             thread.join()
+        self.bar.refresh()
+        self.bar.close()
         t2 = time()
         return self.open_ports, self.down_hosts, t2-t1
 
