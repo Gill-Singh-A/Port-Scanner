@@ -11,6 +11,7 @@ Scans for Open ports in the given IPv4 Targets using TCP Protocol
 ```
 colorama
 scapy
+tqdm
 ```
 
 Install dependencies:
